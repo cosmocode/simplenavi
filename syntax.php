@@ -14,7 +14,7 @@ if (!defined('DOKU_TAB')) define('DOKU_TAB', "\t");
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 
 require_once DOKU_PLUGIN.'syntax.php';
-require_once DOKU_INC.'inc/syntax.php';
+require_once DOKU_INC.'inc/search.php';
 
 class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
     function getType() {
@@ -58,15 +58,13 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         return true;
     }
 
-
-
     function _list($item){
         global $INFO;
 
         if(($item['type'] == 'd' && $item['open']) || $INFO['id'] == $item['id']){
             return '<strong>'.html_wikilink(':'.$item['id']).'</strong>';
         }else{
-            return html_wikilink(':'.$item['id']);
+            return html_wikilink(':'.$item['id'],$this->_title($item['id']));
         }
 
     }
@@ -136,6 +134,23 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         return $return;
     }
 
+    function _title($id) {
+        global $conf;
+
+        if(useHeading('navigation')){
+            $p = p_get_first_heading($id);
+        }
+        if($p) return $p;
+
+        $p = noNS($id);
+        if ($p == $conf['start'] || $p == false) {
+            $p = noNS(getNS($id));
+            if ($p == false) {
+                return $conf['start'];
+            }
+        }
+        return $p;
+    }
 
 }
 
