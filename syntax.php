@@ -62,7 +62,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         global $INFO;
 
         if(($item['type'] == 'd' && $item['open']) || $INFO['id'] == $item['id']){
-            return '<strong>'.html_wikilink(':'.$item['id']).'</strong>';
+            return '<strong>'.html_wikilink(':'.$item['id'],$this->_title($item['id'])).'</strong>';
         }else{
             return html_wikilink(':'.$item['id'],$this->_title($item['id']));
         }
