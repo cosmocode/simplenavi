@@ -51,12 +51,29 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         $data = array();
         search($data,$conf['datadir'],array($this,'_search'),array('ns' => $INFO['id']),$ns);
 
+        // TODO: make it optional with an option
+        $this->_sortByTitle($data,"id");
+
         $R->doc .= '<div class="plugin__simplenavi">';
         $R->doc .= html_buildlist($data,'idx',array($this,'_list'),array($this,'_li'));
         $R->doc .= '</div>';
 
         return true;
     }
+    
+    function _sortByTitle(&$array, $key) {
+        $sorter=array();
+        $ret=array();
+        reset($array);
+        foreach ($array as $ii => $va) {
+            $sorter[$ii]=$this->_title($va[$key]);
+        }
+        natcasesort($sorter);
+        foreach ($sorter as $ii => $va) {
+            $ret[$ii]=$array[$ii];
+        }
+        $array=$ret;
+    }    
 
     function _list($item){
         global $INFO;
