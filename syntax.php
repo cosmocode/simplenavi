@@ -50,6 +50,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         $ns = utf8_encodeFN(str_replace(':','/',$pass[0]));
         $data = array();
         search($data,$conf['datadir'],array($this,'_search'),array('ns' => $INFO['id']),$ns);
+        uksort($data, array($this, '_cmp'));
 
         $R->doc .= '<div class="plugin__simplenavi">';
         $R->doc .= html_buildlist($data,'idx',array($this,'_list'),array($this,'_li'));
@@ -127,7 +128,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
             return false;
         }
 
-        $data[]=array( 'id'    => $id,
+        $data[$id]=array( 'id'    => $id,
                        'type'  => $type,
                        'level' => $lvl,
                        'open'  => $return);
@@ -152,6 +153,14 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         return $p;
     }
 
+    function _cmp($a, $b) {
+        global $conf;
+
+        $a = preg_replace('/:'.preg_quote($conf['start'], '/').'$/', '', $a);
+        $b = preg_replace('/:'.preg_quote($conf['start'], '/').'$/', '', $b);
+
+        return strcmp($a, $b);
+    }
 }
 
-// vim:ts=4:sw=4:et:enc=utf-8:
+// vim:ts=4:sw=4:et:
