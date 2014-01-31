@@ -156,8 +156,8 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
     function _cmp($a, $b) {
         global $conf;
 
-        $a = preg_replace('/:'.$conf['start'].'$/', '', $a);
-        $b = preg_replace('/:'.$conf['start'].'$/', '', $b);
+        $a = preg_replace('/:'.preg_quote($conf['start'], '/').'$/', '', $a);
+        $b = preg_replace('/:'.preg_quote($conf['start'], '/').'$/', '', $b);
 
         return strcmp($a, $b);
     }
