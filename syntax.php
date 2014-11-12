@@ -49,7 +49,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
 
         $ns = utf8_encodeFN(str_replace(':','/',$pass[0]));
         $data = array();
-        search($data,$conf['datadir'],array($this,'_search'),array('ns' => $INFO['id']),$ns,'natural');
+        search($data,$conf['datadir'],array($this,'_search'),array('ns' => $INFO['id']),$ns,1,'natural');
         if ($this->getConf('sort') == 'ascii') {
             uksort($data, array($this, '_cmp'));
         }
