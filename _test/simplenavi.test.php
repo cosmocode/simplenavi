@@ -4,7 +4,7 @@
  *
  * @author  Michael Große <grosse@cosmocode.de>
  *
- * @group Michael Grosse
+ * @group Michael Große <grosse@cosmocode.de>
  * @group plugin_simplenavi
  * @group plugins
  */
@@ -29,6 +29,9 @@ class parser_plugin_simplenavi_test extends DokuWikiTest {
 
     }
 
+    /**
+     * @covers syntax_plugin_simplenavi
+     */
     function test_output_natural() {
         global $ID, $conf;
         $conf['plugin']['simplenavi']['sort'] = 'natural';
@@ -59,6 +62,9 @@ class parser_plugin_simplenavi_test extends DokuWikiTest {
         $this->assertTrue(strpos($listlines[5],'href="/./doku.php?id=namespace123:start"') !== false, 'namespace123 should be after namespace21.');
     }
 
+    /**
+     * @covers syntax_plugin_simplenavi
+     */
     function test_output_ascii() {
         global $ID, $conf;
         $conf['plugin']['simplenavi']['sort'] = 'ascii';
