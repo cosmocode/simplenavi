@@ -1,7 +1,7 @@
 base   simplenavi
 author Andreas Gohr
 email  gohr@cosmocode.de
-date   2014-01-31
+date   2015-01-07
 name   simplenavi plugin
 desc   Create a simple navigation tree based on namespaces
 url    http://www.dokuwiki.org/plugin:simplenavi
