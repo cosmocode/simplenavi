@@ -159,8 +159,8 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         global $conf;
         $a = preg_replace('/'.preg_quote($conf['start'], '/').'$/', '', $a);
         $b = preg_replace('/'.preg_quote($conf['start'], '/').'$/', '', $b);
-        $a = preg_replace('/:/', '/', $a);
-        $b = preg_replace('/:/', '/', $b);
+        $a = str_replace(':', '/', $a);
+        $b = str_replace(':', '/', $b);
 
         return strcmp($a, $b);
     }
