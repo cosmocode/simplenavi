@@ -34,13 +34,13 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         $this->Lexer->addSpecialPattern('{{simplenavi>[^}]*}}',$mode,'plugin_simplenavi');
     }
 
-    function handle($match, $state, $pos, &$handler){
+    function handle($match, $state, $pos, Doku_Handler $handler){
         $data = array(cleanID(substr($match,13,-2)));
 
         return $data;
     }
 
-    function render($mode, &$R, $pass) {
+    function render($mode, Doku_Renderer $R, $pass) {
         if($mode != 'xhtml') return false;
 
         global $conf;
