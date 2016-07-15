@@ -50,8 +50,12 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         $ns = utf8_encodeFN(str_replace(':','/',$pass[0]));
         $data = array();
         search($data,$conf['datadir'],array($this,'_search'),array('ns' => $INFO['id']),$ns,1,'natural');
-        if ($this->getConf('sort') == 'ascii') {
-            uksort($data, array($this, '_cmp'));
+        if ($this->getConf('sortByTitle') == true) {
+            $this->_sortByTitle($data,"id");
+        } else {
+            if ($this->getConf('sort') == 'ascii') {
+                uksort($data, array($this, '_cmp'));
+            }
         }
 
         $R->doc .= '<div class="plugin__simplenavi">';
@@ -164,6 +168,25 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
 
         return strcmp($a, $b);
     }
+
+    function _sortByTitle(&$array, $key) {
+        $sorter = array();
+        $ret = array();
+        reset($array);
+        foreach ($array as $ii => $va) {
+            $sorter[$ii] = $this->_title($va[$key]);
+        }
+        if ($this->getConf('sort') == 'ascii') {
+            uksort($sorter, array($this, '_cmp'));
+        } else {
+            natcasesort($sorter);
+        }
+        foreach ($sorter as $ii => $va) {
+            $ret[$ii] = $array[$ii];
+        }
+        $array = $ret;
+    }
+
 }
 
 // vim:ts=4:sw=4:et:
