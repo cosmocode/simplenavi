@@ -35,7 +35,8 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
     }
 
     function handle($match, $state, $pos, Doku_Handler $handler){
-        $data = array(cleanID(substr($match,13,-2)));
+        $data = explode('&', substr($match,13,-2));
+        $data[0] = cleanID($data[0]);
 
         return $data;
     }
@@ -50,7 +51,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         $ns = utf8_encodeFN(str_replace(':','/',$pass[0]));
         $data = array();
         search($data,$conf['datadir'],array($this,'_search'),array('ns' => $INFO['id']),$ns,1,'natural');
-        
+
         $pagelist =& plugin_load('helper', 'pagelist');
         if (!$pagelist) {
             if ($this->getConf('sortByTitle') == true) {
@@ -65,8 +66,10 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
             $R->doc .= html_buildlist($data,'idx',array($this,'_list'),array($this,'_li'));
             $R->doc .= '</div>';
         } else {
+            unset($pass[0]);
+            $pagelist->setFlags($pass);
             $pagelist->startList();
-            foreach ($data as $page){
+            foreach ($data as $page) {
                 $pagelist->addPage($page);
             }
             $R->doc .= $pagelist->finishList();
