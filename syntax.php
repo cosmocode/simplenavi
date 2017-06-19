@@ -4,7 +4,7 @@
  *
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author  Andreas Gohr <gohr@cosmocode.de>
- * @author  Szymon Olewniczak <(my first name) [at] imz [dot] re>
+ * @author  Szymon Olewniczak <solewniczak@rid.pl>
  */
 
 // must be run within Dokuwiki
@@ -40,12 +40,12 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         
         //defaults
         $opts = array(
-			'skipns' => ''
+            'skipns' => ''
         );
         
         if(preg_match('/skipns=(\S+)/u', $optsstr, $sns) > 0) {
-			$opts['skipns'] = $sns[1];
-		}
+            $opts['skipns'] = $sns[1];
+        }
 
         $data = array(cleanID($nsstr), $opts);
 
@@ -151,8 +151,8 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         
         //check skipns
         if(!empty($opts['skipns']) && preg_match('/'.$opts['skipns'].'/ui',':'.$id)){
-			return false;
-		}
+                return false;
+        }
 
         $data[$id]=array( 'id'    => $id,
                        'type'  => $type,
