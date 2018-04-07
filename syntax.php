@@ -116,7 +116,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         )){
             //add but don't recurse
             $return = false;
-        }elseif($type == 'f' && ($opts['nofiles'] || substr($file,-4) != '.txt')){
+        }elseif($type == 'f' && (!empty($opts['nofiles']) || substr($file,-4) != '.txt')){
             //don't add
             return false;
         }
@@ -131,7 +131,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
             $id = "$id:";
             resolve_pageid('',$id,$exists);
             $this->startpages[$id] = 1;
-        }elseif($this->startpages[$id]){
+        }elseif(!empty($this->startpages[$id])){
             // skip already shown start pages
             return false;
         }elseif(noNS($id) == $conf['start']){
@@ -167,7 +167,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         if(useHeading('navigation')){
             $p = p_get_first_heading($id);
         }
-        if($p) return $p;
+        if(!empty($p)) return $p;
 
         $p = noNS($id);
         if ($p == $conf['start'] || $p == false) {
