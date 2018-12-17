@@ -6,3 +6,4 @@
  */
 
 $lang['sort'] = 'Sort order';
+$lang['sortByTitle'] = 'Sort pages by title';

@@ -165,8 +165,35 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         $b = preg_replace('/'.preg_quote($conf['start'], '/').'$/', '', $b);
         $a = str_replace(':', '/', $a);
         $b = str_replace(':', '/', $b);
-
+        
+        //This handles leading zeros can be skipped
+        $callback = function($digit) {
+            $digit = $digit[0];
+            $dlen = strlen($digit);
+            for($i = $dlen; $i<4; $i++)
+                $digit = "0$digit";
+            return $digit;
+        };
+        $a = preg_replace_callback('~\d+~', $callback, $a);
+        $b = preg_replace_callback('~\d+~', $callback, $b);
+        //End leading zero code
+        
         return strcmp($a, $b);
+    }
+    
+    function _resolveTitlePath($pageId){
+        $ret = $this->_title($pageId);
+        
+        $parentId = preg_replace("/:start$/", "", $pageId);
+        $parentId = preg_replace("/:[a-zA-Z0-9_-]+$/", "", $parentId);
+
+        $pageIdEnd = str_replace($parentId.':', "", $pageId);
+        if($ret == $pageIdEnd){
+            $ret = $this->_title($pageId.":start");
+        }
+        if($pageId != $parentId)
+            $ret = $this->_resolveTitlePath($parentId) . "/" . $ret;
+        return $ret;
     }
 
     function _sortByTitle(&$array, $key) {
@@ -174,10 +201,10 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         $ret = array();
         reset($array);
         foreach ($array as $ii => $va) {
-            $sorter[$ii] = $this->_title($va[$key]);
+            $sorter[$ii] = $this->_resolveTitlePath($va[$key]);
         }
         if ($this->getConf('sort') == 'ascii') {
-            uksort($sorter, array($this, '_cmp'));
+            uasort($sorter, array($this, '_cmp'));
         } else {
             natcasesort($sorter);
         }

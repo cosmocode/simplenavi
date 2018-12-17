@@ -5,3 +5,4 @@
  * @author  Michael Große <grosse@cosmocode.de>
  */
 $conf['sort'] = 'natural';
+$conf['sortByTitle'] = 0;
