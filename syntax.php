@@ -51,7 +51,8 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         $data = array();
         search($data,$conf['datadir'],array($this,'_search'),array('ns' => $INFO['id']),$ns,1,'natural');
         if ($this->getConf('sortByTitle') == true) {
-            $this->_sortByTitle($data,"id");
+		//if ($conf['useheading']) {	
+			$this->_sortByTitle($data,"id");
         } else {
             if ($this->getConf('sort') == 'ascii') {
                 uksort($data, array($this, '_cmp'));
@@ -163,38 +164,57 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         global $conf;
         $a = preg_replace('/'.preg_quote($conf['start'], '/').'$/', '', $a);
         $b = preg_replace('/'.preg_quote($conf['start'], '/').'$/', '', $b);
-        $a = str_replace(':', '/', $a);
-        $b = str_replace(':', '/', $b);
-        
-        //This handles leading zeros can be skipped
-        $callback = function($digit) {
-            $digit = $digit[0];
-            $dlen = strlen($digit);
-            for($i = $dlen; $i<4; $i++)
-                $digit = "0$digit";
-            return $digit;
-        };
-        $a = preg_replace_callback('~\d+~', $callback, $a);
-        $b = preg_replace_callback('~\d+~', $callback, $b);
-        //End leading zero code
-        
-        return strcmp($a, $b);
+		
+		//This handles leading zeros can be skipped
+		$callback = function($digit) {
+			$digit = $digit[0];
+			$dlen = strlen($digit);
+			for($i = $dlen; $i<4; $i++)
+				$digit = "0$digit";
+			return $digit;
+		};
+		
+        $aArr = preg_split("/(:)/",$a);
+        $bArr = preg_split("/(:)/",$b);
+		$ret = 0;
+		$len = min(count($aArr), count($bArr));
+		for($i=0; $i<$len; $i++)
+		{
+			$aa = preg_replace_callback('~\d+~', $callback, $aArr[$i]);
+			$bb = preg_replace_callback('~\d+~', $callback, $bArr[$i]);
+			$ret = strcmp($aa, $bb);
+			if($ret != 0)
+				return $ret;
+		}
+		if(count($aArr) > $len)
+			return 1;
+		if(count($bArr) > $len)
+			return -1;
+		return 0;
     }
-    
-    function _resolveTitlePath($pageId){
-        $ret = $this->_title($pageId);
-        
-        $parentId = preg_replace("/:start$/", "", $pageId);
-        $parentId = preg_replace("/:[a-zA-Z0-9_-]+$/", "", $parentId);
-
-        $pageIdEnd = str_replace($parentId.':', "", $pageId);
-        if($ret == $pageIdEnd){
-            $ret = $this->_title($pageId.":start");
-        }
-        if($pageId != $parentId)
-            $ret = $this->_resolveTitlePath($parentId) . "/" . $ret;
-        return $ret;
-    }
+	
+	function _resolveTitlePath($pageId){
+		$ret = $this->_title($pageId);
+		$pageId = preg_replace("/:start$/", "", $pageId);
+		$nsp = preg_split("/(:)/",$pageId);
+		$endId = $nsp[count($nsp)-1];
+		
+		//check if the name is different from the page
+		if($ret == $endId) {
+			$ret = $this->_title($pageId.":start");
+			if($ret == "start")
+				$ret = $endId;
+		}	
+		//check if there are more to resolve
+		if(count($nsp)>1) {
+			$parentId = "";
+			for($i = 0; $i < count($nsp)-1; $i++)
+				$parentId = $parentId.":".$nsp[$i];
+			$parentId = preg_replace("/^:/", "", $parentId);
+			$ret = $this->_resolveTitlePath($parentId) . ":" . $ret;
+		}
+		return $ret;
+	}
 
     function _sortByTitle(&$array, $key) {
         $sorter = array();
