@@ -9,3 +9,4 @@ $meta['sort'] = array('multichoice',
                       array('ascii',
                             'natural'
                       ));
+$meta["sortByTitle"] = array("onoff");
