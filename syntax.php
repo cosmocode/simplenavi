@@ -4,6 +4,7 @@
  *
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author  Andreas Gohr <gohr@cosmocode.de>
+ * @author  Szymon Olewniczak <solewniczak@rid.pl>
  */
 
 // must be run within Dokuwiki
@@ -35,7 +36,18 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
     }
 
     function handle($match, $state, $pos, Doku_Handler $handler){
-        $data = array(cleanID(substr($match,13,-2)));
+        list($nsstr, $optsstr) = explode('|', substr($match,13,-2), 2);
+        
+        //defaults
+        $opts = array(
+            'skipns' => ''
+        );
+        
+        if(preg_match('/skipns=(\S+)/u', $optsstr, $sns) > 0) {
+            $opts['skipns'] = $sns[1];
+        }
+
+        $data = array(cleanID($nsstr), $opts);
 
         return $data;
     }
@@ -46,10 +58,13 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         global $conf;
         global $INFO;
         $R->info['cache'] = false;
+        
+        list($nsstr, $opts) = $pass;
 
-        $ns = utf8_encodeFN(str_replace(':','/',$pass[0]));
+        $ns = utf8_encodeFN(str_replace(':','/',$nsstr));
         $data = array();
-        search($data,$conf['datadir'],array($this,'_search'),array('ns' => $INFO['id']),$ns,1,'natural');
+        $opts['ns'] = $INFO['id'];
+        search($data,$conf['datadir'],array($this,'_search'),$opts,$ns,1,'natural');
         if ($this->getConf('sortByTitle') == true) {
             $this->_sortByTitle($data,"id");
         } else {
@@ -132,6 +147,11 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         //check ACL
         if($type=='f' && auth_quickaclcheck($id) < AUTH_READ){
             return false;
+        }
+        
+        //check skipns
+        if(!empty($opts['skipns']) && preg_match('/'.$opts['skipns'].'/ui',':'.$id)){
+                return false;
         }
 
         $data[$id]=array( 'id'    => $id,
