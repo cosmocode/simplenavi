@@ -130,7 +130,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         }
 
         //check ACL
-        if($type=='f' && auth_quickaclcheck($id) < AUTH_READ){
+        if(auth_quickaclcheck($id) < AUTH_READ){
             return false;
         }
 
