@@ -122,7 +122,11 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin {
         }elseif(noNS($id) == $conf['start']){
             // skip the main start page
             return false;
-        }
+        }elseif(noNS($id) == $conf['sidebar']){
+            // hide sidebar pages
+            return false;
+         }
+
 
         //check hidden
         if(isHiddenPage($id)){
