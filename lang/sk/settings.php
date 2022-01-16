@@ -1,6 +1,6 @@
 <?php
 /**
- * english language file for simplenavi plugin
+ * slovak language file for simplenavi plugin
  *
  * @author Viktor Kristian <vkristian@gmail.com>
  */
