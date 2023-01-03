@@ -8,7 +8,6 @@ use dokuwiki\File\PageResolver;
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author  Andreas Gohr <gohr@cosmocode.de>
  */
-
 class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
 {
     private $startpages = [];
@@ -40,7 +39,8 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
     /** @inheritdoc */
     public function handle($match, $state, $pos, Doku_Handler $handler)
     {
-        $data = [cleanID(substr($match, 13, -2))];
+        $data = explode(' ', substr($match, 13, -2));
+        $data[0] = cleanID($data[0]);
 
         return $data;
     }
@@ -52,9 +52,11 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
 
         global $conf;
         global $INFO;
-        $renderer->info['cache'] = false;
+        $renderer->nocache();
 
-        $ns = utf8_encodeFN(str_replace(':', '/', $data[0]));
+        // first data is namespace, rest is options
+        $ns = utf8_encodeFN(str_replace(':', '/', array_shift($data)));
+
         $items = [];
         search($items, $conf['datadir'], [$this, 'cbSearch'], ['ns' => $INFO['id']], $ns, 1, 'natural');
         if ($this->getConf('sortByTitle')) {
@@ -65,7 +67,10 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
             }
         }
 
-        $renderer->doc .= '<div class="plugin__simplenavi">';
+        $class = 'plugin__simplenavi';
+        if(in_array('filter', $data)) $class .= ' plugin__simplenavi_filter';
+
+        $renderer->doc .= '<div class="'.$class.'">';
         $renderer->doc .= html_buildlist($items, 'idx', [$this, 'cbList'], [$this, 'cbListItem']);
         $renderer->doc .= '</div>';
 
