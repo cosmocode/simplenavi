@@ -39,10 +39,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
     /** @inheritdoc */
     public function handle($match, $state, $pos, Doku_Handler $handler)
     {
-        $data = explode(' ', substr($match, 13, -2));
-        $data[0] = cleanID($data[0]);
-
-        return $data;
+        return explode(' ', substr($match, 13, -2));
     }
 
     /** @inheritdoc */
@@ -55,7 +52,15 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
         $renderer->nocache();
 
         // first data is namespace, rest is options
-        $ns = utf8_encodeFN(str_replace(':', '/', array_shift($data)));
+        $ns = array_shift($data);
+        if ($ns && $ns[0] === '.') {
+            // resolve relative to current page
+            $ns = getNS((new PageResolver($INFO['id']))->resolveId("$ns:xxx"));
+        } else {
+            $ns = cleanID($ns);
+        }
+        // convert to path
+        $ns = utf8_encodeFN(str_replace(':', '/', $ns));
 
         $items = [];
         search($items, $conf['datadir'], [$this, 'cbSearch'], ['ns' => $INFO['id']], $ns, 1, 'natural');
@@ -68,9 +73,9 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
         }
 
         $class = 'plugin__simplenavi';
-        if(in_array('filter', $data)) $class .= ' plugin__simplenavi_filter';
+        if (in_array('filter', $data)) $class .= ' plugin__simplenavi_filter';
 
-        $renderer->doc .= '<div class="'.$class.'">';
+        $renderer->doc .= '<div class="' . $class . '">';
         $renderer->doc .= html_buildlist($items, 'idx', [$this, 'cbList'], [$this, 'cbListItem']);
         $renderer->doc .= '</div>';
 
