@@ -149,8 +149,12 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
             return false;
         }
 
-        if ($type == 'd' && $conf['sneaky_index'] && auth_quickaclcheck($id . ':') < AUTH_READ) {
-            return false;
+        // for sneaky index, check access to the namespace's start page
+        if ($type == 'd' && $conf['sneaky_index']) {
+            $sp = (new PageResolver(''))->resolveId($id . ':');
+            if (auth_quickaclcheck($sp) < AUTH_READ) {
+                return false;
+            }
         }
 
         if ($type == 'd') {
