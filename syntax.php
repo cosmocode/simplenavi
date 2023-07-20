@@ -1,6 +1,7 @@
 <?php
 
 use dokuwiki\File\PageResolver;
+use dokuwiki\Utf8\Sort;
 
 /**
  * DokuWiki Plugin simplenavi (Syntax Component)
@@ -62,15 +63,12 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
         // convert to path
         $ns = utf8_encodeFN(str_replace(':', '/', $ns));
 
-        $items = [];
-        search($items, $conf['datadir'], [$this, 'cbSearch'], ['ns' => $INFO['id']], $ns, 1, 'natural');
-        if ($this->getConf('sortByTitle')) {
-            $this->sortByTitle($items, "id");
-        } else {
-            if ($this->getConf('sort') == 'ascii') {
-                uksort($items, [$this, 'pathCompare']);
-            }
-        }
+        $items = $this->getSortedItems(
+            $ns,
+            $INFO['id'],
+            $this->getConf('usetitle'),
+            $this->getConf('natsort')
+        );
 
         $class = 'plugin__simplenavi';
         if (in_array('filter', $data)) $class .= ' plugin__simplenavi_filter';
@@ -81,6 +79,93 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
 
         return true;
     }
+
+    /**
+     * Fetch the items to display
+     *
+     * This returns a flat list suitable for html_buildlist()
+     *
+     * @param string $ns the namespace to search in
+     * @param string $current the current page, the tree will be expanded to this
+     * @param bool $useTitle Sort by the title instead of the ID?
+     * @param bool $useNatSort Use natural sorting or just sort by ASCII?
+     * @return array
+     */
+    public function getSortedItems($ns, $current, $useTitle, $useNatSort)
+    {
+        global $conf;
+
+        // execute search using our own callback
+        $items = [];
+        search(
+            $items,
+            $conf['datadir'],
+            [$this, 'cbSearch'],
+            [
+                'currentID' => $current,
+                'usetitle' => $useTitle,
+            ],
+            $ns,
+            1,
+            '' // no sorting, we do ourselves
+        );
+
+        // split into separate levels
+        $current = 1;
+        $parents = [];
+        $levels = [];
+        foreach ($items as $idx => $item) {
+            if ($current < $item['level']) {
+                // previous item was the parent
+                $parents[] = array_key_last($levels[$current]);
+            }
+            $current = $item['level'];
+            $levels[$item['level']][$idx] = $item;
+        }
+
+        // sort each level separately
+        foreach ($levels as $level => $items) {
+            uasort($items, function ($a, $b) use ($useNatSort) {
+                return $this->itemComparator($a, $b, $useNatSort);
+            });
+            $levels[$level] = $items;
+        }
+
+        // merge levels into a flat list again
+        $levels = array_reverse($levels, true);
+        foreach ($levels as $level => $items) {
+            if ($level == 1) break;
+
+            $parent = array_pop($parents);
+            $pos = array_search($parent, array_keys($levels[$level - 1])) + 1;
+
+            $levels[$level - 1] = array_slice($levels[$level - 1], 0, $pos, true) +
+                $levels[$level] +
+                array_slice($levels[$level - 1], $pos, null, true);
+        }
+        $items = $levels[1];
+
+
+        return $items;
+    }
+
+    /**
+     * Compare two items
+     *
+     * @param array $a
+     * @param array $b
+     * @param bool $useNatSort
+     * @return int
+     */
+    public function itemComparator($a, $b, $useNatSort)
+    {
+        if ($useNatSort) {
+            return Sort::strcmp($a['title'], $b['title']);
+        } else {
+            return strcmp($a['title'], $b['title']);
+        }
+    }
+
 
     /**
      * Create a list openening
@@ -94,9 +179,9 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
         global $INFO;
 
         if (($item['type'] == 'd' && $item['open']) || $INFO['id'] == $item['id']) {
-            return '<strong>' . html_wikilink(':' . $item['id'], $this->getTitle($item['id'])) . '</strong>';
+            return '<strong>' . html_wikilink(':' . $item['id'], $item['title']) . '</strong>';
         } else {
-            return html_wikilink(':' . $item['id'], $this->getTitle($item['id']));
+            return html_wikilink(':' . $item['id'], $item['title']);
         }
 
     }
@@ -127,7 +212,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
      * @param $file
      * @param $type
      * @param $lvl
-     * @param $opts
+     * @param array $opts - currentID is the currently shown page
      * @return bool
      */
     public function cbSearch(&$data, $base, $file, $type, $lvl, $opts)
@@ -138,8 +223,8 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
         $id = pathID($file);
 
         if ($type == 'd' && !(
-                preg_match('#^' . $id . '(:|$)#', $opts['ns']) ||
-                preg_match('#^' . $id . '(:|$)#', getNS($opts['ns']))
+                preg_match('#^' . $id . '(:|$)#', $opts['currentID']) ||
+                preg_match('#^' . $id . '(:|$)#', getNS($opts['currentID']))
 
             )) {
             //add but don't recurse
@@ -159,9 +244,16 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
 
         if ($type == 'd') {
             // link directories to their start pages
+            $original = $id;
             $id = "$id:";
             $id = (new PageResolver(''))->resolveId($id);
             $this->startpages[$id] = 1;
+
+            // if the resolve id is in the same namespace as the original it's a start page named like the dir
+            if (getNS($original) == getNS($id)) {
+                $useNS = $original;
+            }
+
         } elseif (!empty($this->startpages[$id])) {
             // skip already shown start pages
             return false;
@@ -180,12 +272,15 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
             return false;
         }
 
-        $data[$id] = array(
+        $data[$id] = [
             'id' => $id,
             'type' => $type,
             'level' => $lvl,
             'open' => $return,
-        );
+            'title' => $this->getTitle($id, $opts['usetitle']),
+            'ns' => $useNS ?? (string)getNS($id),
+        ];
+
         return $return;
     }
 
@@ -193,16 +288,17 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
      * Get the title for the given page ID
      *
      * @param string $id
+     * @param bool $usetitle - use the first heading as title
      * @return string
      */
-    protected function getTitle($id)
+    protected function getTitle($id, $usetitle)
     {
         global $conf;
 
-        if (useHeading('navigation')) {
+        if ($usetitle) {
             $p = p_get_first_heading($id);
+            if (!empty($p)) return $p;
         }
-        if (!empty($p)) return $p;
 
         $p = noNS($id);
         if ($p == $conf['start'] || !$p) {
@@ -213,49 +309,4 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
         }
         return $p;
     }
-
-    /**
-     * Custom comparator to compare IDs
-     *
-     * @param string $a
-     * @param string $b
-     * @return int
-     */
-    public function pathCompare($a, $b)
-    {
-        global $conf;
-        $a = preg_replace('/' . preg_quote($conf['start'], '/') . '$/', '', $a);
-        $b = preg_replace('/' . preg_quote($conf['start'], '/') . '$/', '', $b);
-        $a = str_replace(':', '/', $a);
-        $b = str_replace(':', '/', $b);
-
-        return strcmp($a, $b);
-    }
-
-    /**
-     * Sort items by title
-     *
-     * @param array[] $array a list of items
-     * @param string $key the key that contains the page ID in each item
-     * @return void
-     */
-    protected function sortByTitle(&$array, $key)
-    {
-        $sorter = [];
-        $ret = [];
-        reset($array);
-        foreach ($array as $ii => $va) {
-            $sorter[$ii] = $this->getTitle($va[$key]);
-        }
-        if ($this->getConf('sort') == 'ascii') {
-            uksort($sorter, [$this, 'pathCompare']);
-        } else {
-            natcasesort($sorter);
-        }
-        foreach ($sorter as $ii => $va) {
-            $ret[$ii] = $array[$ii];
-        }
-        $array = $ret;
-    }
-
 }

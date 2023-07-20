@@ -1,11 +1,6 @@
 <?php
 /**
- * Options for the latexit plugin
- *
- * @author  Michael Große <grosse@cosmocode.de>
+ * Options for the simplenavi plugin
  */
-$meta['sort'] = array('multichoice',
-                      '_choices' =>
-                      array('ascii',
-                            'natural'
-                      ));
+$meta['natsort'] = array('onoff');
+$meta['usetitle'] = array('onoff');
