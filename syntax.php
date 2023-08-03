@@ -48,7 +48,6 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
     {
         if ($format != 'xhtml') return false;
 
-        global $conf;
         global $INFO;
         $renderer->nocache();
 
@@ -67,7 +66,8 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
             $ns,
             $INFO['id'],
             $this->getConf('usetitle'),
-            $this->getConf('natsort')
+            $this->getConf('natsort'),
+            $this->getConf('nsfirst')
         );
 
         $class = 'plugin__simplenavi';
@@ -91,7 +91,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
      * @param bool $useNatSort Use natural sorting or just sort by ASCII?
      * @return array
      */
-    public function getSortedItems($ns, $current, $useTitle, $useNatSort)
+    public function getSortedItems($ns, $current, $useTitle, $useNatSort, $nsFirst)
     {
         global $conf;
 
@@ -125,8 +125,8 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
 
         // sort each level separately
         foreach ($levels as $level => $items) {
-            uasort($items, function ($a, $b) use ($useNatSort) {
-                return $this->itemComparator($a, $b, $useNatSort);
+            uasort($items, function ($a, $b) use ($useNatSort, $nsFirst) {
+                return $this->itemComparator($a, $b, $useNatSort, $nsFirst);
             });
             $levels[$level] = $items;
         }
@@ -139,14 +139,13 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
             $parent = array_pop($parents);
             $pos = array_search($parent, array_keys($levels[$level - 1])) + 1;
 
+            /** @noinspection PhpArrayAccessCanBeReplacedWithForeachValueInspection */
             $levels[$level - 1] = array_slice($levels[$level - 1], 0, $pos, true) +
                 $levels[$level] +
                 array_slice($levels[$level - 1], $pos, null, true);
         }
-        $items = $levels[1];
 
-
-        return $items;
+        return $levels[1];
     }
 
     /**
@@ -155,10 +154,15 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
      * @param array $a
      * @param array $b
      * @param bool $useNatSort
+     * @param bool $nsFirst
      * @return int
      */
-    public function itemComparator($a, $b, $useNatSort)
+    public function itemComparator($a, $b, $useNatSort, $nsFirst)
     {
+        if ($nsFirst && $a['type'] != $b['type']) {
+            return $a['type'] == 'd' ? -1 : 1;
+        }
+
         if ($useNatSort) {
             return Sort::strcmp($a['title'], $b['title']);
         } else {
