@@ -109,6 +109,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
             1,
             '' // no sorting, we do ourselves
         );
+        if(!$items) return [];
 
         // split into separate levels
         $current = 1;
