@@ -143,7 +143,9 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
 
         // sort each level separately
         foreach ($levels as $level => $items) {
-            uasort($items, fn($a, $b) => $this->itemComparator($a, $b, $useNatSort, $nsFirst));
+            uasort($items, function ($a, $b) use ($useNatSort, $nsFirst) {
+                return $this->itemComparator($a, $b, $useNatSort, $nsFirst);
+            });
             $levels[$level] = $items;
         }
 
