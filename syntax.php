@@ -244,11 +244,7 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
         $id = pathID($file);
 
         if (
-            $type == 'd' && !(
-                preg_match('#^' . $id . '(:|$)#', $opts['currentID']) ||
-                preg_match('#^' . $id . '(:|$)#', getNS($opts['currentID']))
-
-            )
+            $type == 'd' && (!preg_match('#^' . $id . '(:|$)#', $opts['currentID']) && !preg_match('#^' . $id . '(:|$)#', getNS($opts['currentID'])))
         ) {
             //add but don't recurse
             $return = false;
