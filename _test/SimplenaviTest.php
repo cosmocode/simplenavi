@@ -25,6 +25,7 @@ class SimplenaviTest extends DokuWikiTest
 
         $pages = [
             ['foo', 'Foo Page'],
+            ['simplenavi', 'Self Start'],
             ['namespace1:start', 'ZZZ Namespace 1 Start'],
             ['namespace2:foo', 'Namespace 2 Foo'],
             ['namespace2', 'Namespace 2 Start'],
@@ -44,13 +45,15 @@ class SimplenaviTest extends DokuWikiTest
 
     }
 
-    public function dataProvider() {
+    public function dataProvider()
+    {
 
         yield [
             'set' => 'by ID, all branches closed',
             'titlesort' => false,
             'natsort' => false,
             'nsfirst' => false,
+            'home' => false,
             'current' => 'simplenavi:page',
             'expect' => [
                 'simplenavi:foo',
@@ -67,6 +70,7 @@ class SimplenaviTest extends DokuWikiTest
             'titlesort' => false,
             'natsort' => true,
             'nsfirst' => false,
+            'home' => false,
             'current' => 'simplenavi:page',
             'expect' => [
                 'simplenavi:foo',
@@ -83,6 +87,7 @@ class SimplenaviTest extends DokuWikiTest
             'titlesort' => false,
             'natsort' => false,
             'nsfirst' => false,
+            'home' => false,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
                 'simplenavi:foo',
@@ -102,6 +107,7 @@ class SimplenaviTest extends DokuWikiTest
             'titlesort' => false,
             'natsort' => true,
             'nsfirst' => false,
+            'home' => false,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
                 'simplenavi:foo',
@@ -121,6 +127,7 @@ class SimplenaviTest extends DokuWikiTest
             'titlesort' => false,
             'natsort' => true,
             'nsfirst' => true,
+            'home' => false,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
                 'simplenavi:namespace1:start',
@@ -140,6 +147,7 @@ class SimplenaviTest extends DokuWikiTest
             'titlesort' => true,
             'natsort' => false,
             'nsfirst' => false,
+            'home' => false,
             'current' => 'simplenavi:page',
             'expect' => [
                 'simplenavi:namespace123:namespace123',
@@ -156,6 +164,7 @@ class SimplenaviTest extends DokuWikiTest
             'titlesort' => true,
             'natsort' => true,
             'nsfirst' => false,
+            'home' => false,
             'current' => 'simplenavi:page',
             'expect' => [
                 'simplenavi:namespace123:namespace123',
@@ -172,6 +181,7 @@ class SimplenaviTest extends DokuWikiTest
             'titlesort' => true,
             'natsort' => false,
             'nsfirst' => false,
+            'home' => false,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
                 'simplenavi:namespace123:namespace123',
@@ -191,6 +201,7 @@ class SimplenaviTest extends DokuWikiTest
             'titlesort' => true,
             'natsort' => true,
             'nsfirst' => false,
+            'home' => false,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
                 'simplenavi:namespace123:namespace123',
@@ -210,6 +221,7 @@ class SimplenaviTest extends DokuWikiTest
             'titlesort' => true,
             'natsort' => true,
             'nsfirst' => true,
+            'home' => false,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
                 'simplenavi:namespace123:namespace123',
@@ -223,15 +235,36 @@ class SimplenaviTest extends DokuWikiTest
                 'simplenavi:foo',
             ]
         ];
+
+        yield [
+            'set' => 'by ID, branch open with home level',
+            'titlesort' => false,
+            'natsort' => false,
+            'nsfirst' => false,
+            'home' => true,
+            'current' => 'simplenavi:namespace123:deep:foo',
+            'expect' => [
+                'simplenavi:simplenavi',
+                'simplenavi:foo',
+                'simplenavi:namespace1:start',
+                'simplenavi:namespace12:start',
+                'simplenavi:namespace123:namespace123',
+                'simplenavi:namespace123:deep:start',
+                'simplenavi:namespace123:deep:foo',
+                'simplenavi:namespace123:foo',
+                'simplenavi:namespace2',
+                'simplenavi:namespace21:start',
+            ]
+        ];
     }
 
     /**
      * @dataProvider dataProvider
      */
-    public function testSorting($set, $titlesort, $natsort, $nsfirst, $current, $expect)
+    public function testSorting($set, $titlesort, $natsort, $nsfirst, $home, $current, $expect)
     {
         $simpleNavi = new \syntax_plugin_simplenavi();
-        $items = $simpleNavi->getSortedItems('simplenavi', $current, $titlesort, $natsort, $nsfirst);
+        $items = $simpleNavi->getSortedItems('simplenavi', $current, $titlesort, $natsort, $nsfirst, $home);
         $this->assertSame($expect, array_column($items, 'id'), $set);
     }
 

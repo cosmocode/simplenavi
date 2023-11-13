@@ -1,5 +1,6 @@
 <?php
 
+use dokuwiki\Extension\SyntaxPlugin;
 use dokuwiki\File\PageResolver;
 use dokuwiki\Utf8\Sort;
 
@@ -9,7 +10,7 @@ use dokuwiki\Utf8\Sort;
  * @license GPL 2 http://www.gnu.org/licenses/gpl-2.0.html
  * @author  Andreas Gohr <gohr@cosmocode.de>
  */
-class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
+class syntax_plugin_simplenavi extends SyntaxPlugin
 {
     private $startpages = [];
 
@@ -59,15 +60,14 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
         } else {
             $ns = cleanID($ns);
         }
-        // convert to path
-        $ns = utf8_encodeFN(str_replace(':', '/', $ns));
 
         $items = $this->getSortedItems(
             $ns,
             $INFO['id'],
             $this->getConf('usetitle'),
             $this->getConf('natsort'),
-            $this->getConf('nsfirst')
+            $this->getConf('nsfirst'),
+            in_array('home', $data)
         );
 
         $class = 'plugin__simplenavi';
@@ -89,14 +89,31 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
      * @param string $current the current page, the tree will be expanded to this
      * @param bool $useTitle Sort by the title instead of the ID?
      * @param bool $useNatSort Use natural sorting or just sort by ASCII?
+     * @param bool $nsFirst Sort namespaces before pages?
+     * @param bool $home Add namespace's start page as top level item?
      * @return array
      */
-    public function getSortedItems($ns, $current, $useTitle, $useNatSort, $nsFirst)
+    public function getSortedItems($ns, $current, $useTitle, $useNatSort, $nsFirst, $home)
     {
         global $conf;
 
-        // execute search using our own callback
+        // convert to path
+        $nspath = utf8_encodeFN(str_replace(':', '/', $ns));
+
+        // get the start page of the main namespace, this adds it to the list of seen pages in $this->startpages
+        // and will skip it by default in the search callback
+        $startPage = $this->getMainStartPage($ns, $useTitle);
+
         $items = [];
+        if ($home) {
+            // when home is requested, add the start page as top level item
+            $items[$startPage['id']] = $startPage;
+            $minlevel = 0;
+        } else {
+            $minlevel = 1;
+        }
+
+        // execute search using our own callback
         search(
             $items,
             $conf['datadir'],
@@ -105,37 +122,35 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
                 'currentID' => $current,
                 'usetitle' => $useTitle,
             ],
-            $ns,
+            $nspath,
             1,
             '' // no sorting, we do ourselves
         );
-        if(!$items) return [];
+        if (!$items) return [];
 
         // split into separate levels
-        $current = 1;
         $parents = [];
         $levels = [];
+        $curLevel = $minlevel;
         foreach ($items as $idx => $item) {
-            if ($current < $item['level']) {
+            if ($curLevel < $item['level']) {
                 // previous item was the parent
-                $parents[] = array_key_last($levels[$current]);
+                $parents[] = array_key_last($levels[$curLevel]);
             }
-            $current = $item['level'];
+            $curLevel = $item['level'];
             $levels[$item['level']][$idx] = $item;
         }
 
         // sort each level separately
         foreach ($levels as $level => $items) {
-            uasort($items, function ($a, $b) use ($useNatSort, $nsFirst) {
-                return $this->itemComparator($a, $b, $useNatSort, $nsFirst);
-            });
+            uasort($items, fn($a, $b) => $this->itemComparator($a, $b, $useNatSort, $nsFirst));
             $levels[$level] = $items;
         }
 
         // merge levels into a flat list again
         $levels = array_reverse($levels, true);
-        foreach ($levels as $level => $items) {
-            if ($level == 1) break;
+        foreach (array_keys($levels) as $level) {
+            if ($level == $minlevel) break;
 
             $parent = array_pop($parents);
             $pos = array_search($parent, array_keys($levels[$level - 1])) + 1;
@@ -146,7 +161,7 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
                 array_slice($levels[$level - 1], $pos, null, true);
         }
 
-        return $levels[1];
+        return $levels[$minlevel];
     }
 
     /**
@@ -188,7 +203,6 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
         } else {
             return html_wikilink(':' . $item['id'], $item['title']);
         }
-
     }
 
     /**
@@ -227,11 +241,13 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
 
         $id = pathID($file);
 
-        if ($type == 'd' && !(
+        if (
+            $type == 'd' && !(
                 preg_match('#^' . $id . '(:|$)#', $opts['currentID']) ||
                 preg_match('#^' . $id . '(:|$)#', getNS($opts['currentID']))
 
-            )) {
+            )
+        ) {
             //add but don't recurse
             $return = false;
         } elseif ($type == 'f' && (!empty($opts['nofiles']) || substr($file, -4) != '.txt')) {
@@ -255,15 +271,11 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
             $this->startpages[$id] = 1;
 
             // if the resolve id is in the same namespace as the original it's a start page named like the dir
-            if (getNS($original) == getNS($id)) {
+            if (getNS($original) === getNS($id)) {
                 $useNS = $original;
             }
-
         } elseif (!empty($this->startpages[$id])) {
             // skip already shown start pages
-            return false;
-        } elseif (noNS($id) == $conf['start']) {
-            // skip the main start page
             return false;
         }
 
@@ -287,6 +299,28 @@ class syntax_plugin_simplenavi extends DokuWiki_Syntax_Plugin
         ];
 
         return $return;
+    }
+
+    /**
+     * @param string $id
+     * @param bool $useTitle
+     * @return array
+     */
+    protected function getMainStartPage($ns, $useTitle)
+    {
+        $resolver = new PageResolver('');
+        $id = $resolver->resolveId($ns . ':');
+
+        $item = [
+            'id' => $id,
+            'type' => 'd',
+            'level' => 0,
+            'open' => true,
+            'title' => $this->getTitle($id, $useTitle),
+            'ns' => $ns,
+        ];
+        $this->startpages[$id] = 1;
+        return $item;
     }
 
     /**
