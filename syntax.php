@@ -2,7 +2,11 @@
 
 use dokuwiki\Extension\SyntaxPlugin;
 use dokuwiki\File\PageResolver;
-use dokuwiki\Utf8\Sort;
+use dokuwiki\TreeBuilder\Node\AbstractNode;
+use dokuwiki\TreeBuilder\Node\WikiNamespace;
+use dokuwiki\TreeBuilder\Node\WikiStartpage;
+use dokuwiki\TreeBuilder\PageTreeBuilder;
+use dokuwiki\TreeBuilder\TreeSort;
 
 /**
  * DokuWiki Plugin simplenavi (Syntax Component)
@@ -61,269 +65,138 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
             $ns = cleanID($ns);
         }
 
-        $items = $this->getSortedItems(
-            $ns,
-            $INFO['id'],
-            $this->getConf('usetitle'),
-            $this->getConf('natsort'),
-            $this->getConf('nsfirst'),
-            in_array('home', $data)
-        );
-
-        $class = 'plugin__simplenavi';
-        if (in_array('filter', $data)) $class .= ' plugin__simplenavi_filter';
-
-        $renderer->doc .= '<div class="' . $class . '">';
-        $renderer->doc .= html_buildlist($items, 'idx', [$this, 'cbList'], [$this, 'cbListItem']);
-        $renderer->doc .= '</div>';
+        $tree = $this->getTree($ns);
+        $this->renderTree($renderer, $tree->getTop());
 
         return true;
     }
 
     /**
-     * Fetch the items to display
+     * Create the tree
      *
-     * This returns a flat list suitable for html_buildlist()
-     *
-     * @param string $ns the namespace to search in
-     * @param string $current the current page, the tree will be expanded to this
-     * @param bool $useTitle Sort by the title instead of the ID?
-     * @param bool $useNatSort Use natural sorting or just sort by ASCII?
-     * @param bool $nsFirst Sort namespaces before pages?
-     * @param bool $home Add namespace's start page as top level item?
-     * @return array
+     * @param string $ns
+     * @return PageTreeBuilder
      */
-    public function getSortedItems($ns, $current, $useTitle, $useNatSort, $nsFirst, $home)
+    protected function getTree(string $ns): PageTreeBuilder
     {
-        global $conf;
-
-        // convert to path
-        $nspath = utf8_encodeFN(str_replace(':', '/', $ns));
-
-        // get the start page of the main namespace, this adds it to the list of seen pages in $this->startpages
-        // and will skip it by default in the search callback
-        $startPage = $this->getMainStartPage($ns, $useTitle);
-
-        $items = [];
-        if ($home) {
-            // when home is requested, add the start page as top level item
-            $items[$startPage['id']] = $startPage;
-            $minlevel = 0;
-        } else {
-            $minlevel = 1;
-        }
-
-        // execute search using our own callback
-        search(
-            $items,
-            $conf['datadir'],
-            [$this, 'cbSearch'],
-            [
-                'currentID' => $current,
-                'usetitle' => $useTitle,
-            ],
-            $nspath,
-            1,
-            '' // no sorting, we do ourselves
-        );
-        if (!$items) return [];
-
-        // split into separate levels
-        $parents = [];
-        $levels = [];
-        $curLevel = $minlevel;
-        foreach ($items as $idx => $item) {
-            if ($curLevel < $item['level']) {
-                // previous item was the parent
-                $parents[] = array_key_last($levels[$curLevel]);
-            }
-            $curLevel = $item['level'];
-            $levels[$item['level']][$idx] = $item;
-        }
-
-        // sort each level separately
-        foreach ($levels as $level => $items) {
-            uasort($items, function ($a, $b) use ($useNatSort, $nsFirst) {
-                return $this->itemComparator($a, $b, $useNatSort, $nsFirst);
-            });
-            $levels[$level] = $items;
-        }
-
-        // merge levels into a flat list again
-        $levels = array_reverse($levels, true);
-        foreach (array_keys($levels) as $level) {
-            if ($level == $minlevel) break;
-
-            $parent = array_pop($parents);
-            $pos = array_search($parent, array_keys($levels[$level - 1])) + 1;
-
-            /** @noinspection PhpArrayAccessCanBeReplacedWithForeachValueInspection */
-            $levels[$level - 1] = array_slice($levels[$level - 1], 0, $pos, true) +
-                $levels[$level] +
-                array_slice($levels[$level - 1], $pos, null, true);
-        }
-
-        return $levels[$minlevel];
-    }
-
-    /**
-     * Compare two items
-     *
-     * @param array $a
-     * @param array $b
-     * @param bool $useNatSort
-     * @param bool $nsFirst
-     * @return int
-     */
-    public function itemComparator($a, $b, $useNatSort, $nsFirst)
-    {
-        if ($nsFirst && $a['type'] != $b['type']) {
-            return $a['type'] == 'd' ? -1 : 1;
-        }
-
-        if ($useNatSort) {
-            return Sort::strcmp($a['title'], $b['title']);
-        } else {
-            return strcmp($a['title'], $b['title']);
-        }
+        $tree = new PageTreeBuilder($ns);
+        $tree->addFlag(PageTreeBuilder::FLAG_NS_AS_STARTPAGE);
+        $tree->addFlag(PageTreeBuilder::FLAG_SELF_TOP);
+        $tree->setRecursionDecision(\Closure::fromCallable([$this, 'treeRecursionDecision']));
+        $tree->setNodeProcessor(\Closure::fromCallable([$this, 'treeNodeProcessor']));
+        $tree->generate();
+        $tree->sort(TreeSort::SORT_BY_NS_FIRST_THEN_TITLE);
+        return $tree;
     }
 
 
     /**
-     * Create a list openening
+     * Callback for the PageTreeBuilder to decide if we want to recurse into a node
      *
-     * @param array $item
-     * @return string
-     * @see html_buildlist()
+     * @param AbstractNode $node
+     * @param int $depth
+     * @return bool
      */
-    public function cbList($item)
+    protected function treeRecursionDecision(AbstractNode $node, int $depth): bool
     {
         global $INFO;
 
-        if (($item['type'] == 'd' && $item['open']) || $INFO['id'] == $item['id']) {
-            return '<strong>' . html_wikilink(':' . $item['id'], $item['title']) . '</strong>';
+        if ($node instanceof WikiStartpage) {
+            $id = $node->getNs(); // use the namespace for startpages
         } else {
-            return html_wikilink(':' . $item['id'], $item['title']);
+            $id = $node->getId();
         }
+
+        $is_current = $this->isParent($INFO['id'], $id);
+        $node->setProperty('is_current', $is_current);
+
+        // always recurse into the current page path
+        if ($is_current) return true;
+
+        // FIXME for deep peek, we want to recurse until level is reached
+
+        return false;
     }
 
     /**
-     * Create a list item
+     * Callback for the PageTreeBuilder to process a node
      *
-     * @param array $item
-     * @return string
-     * @see html_buildlist()
+     * @param AbstractNode $node
+     * @return AbstractNode|null
      */
-    public function cbListItem($item)
+    protected function treeNodeProcessor(AbstractNode $node): ?AbstractNode
     {
-        if ($item['type'] == "f") {
-            return '<li class="level' . $item['level'] . '">';
-        } elseif ($item['open']) {
-            return '<li class="open">';
-        } else {
-            return '<li class="closed">';
+        $usetitle = $this->getConf('usetitle');
+
+        $perm = auth_quickaclcheck($node->getId());
+        $node->setProperty('permission', $perm);
+        $node->setTitle($this->getTitle($node->getId(), $usetitle));
+
+
+        if ($node->hasChildren()) {
+            // this node has children, we add it to the tree regardless of the permission
+            // permissions are checked again when rendering
+            return $node;
         }
+
+        if ($perm < AUTH_READ) {
+            // no children, no permission. No need to add it to the tree
+            return null;
+        }
+
+        return $node;
+    }
+
+
+    /**
+     * Example on how to render a TreeBuilder tree
+     *
+     * @param Doku_Renderer $R The current renderer
+     * @param AbstractNode $top The top node of the tree (use getTop() to get it)
+     * @param int $level current nesting level, starting at 1
+     * @return void
+     */
+    protected function renderTree(Doku_Renderer $R, AbstractNode $top, $level = 1)
+    {
+        $R->listu_open();
+        foreach ($top->getChildren() as $node) {
+            $isfolder = $node instanceof WikiNamespace;
+            $incurrent = $node->getProperty('is_current', false);
+
+            $R->listitem_open(1, $isfolder);
+            $R->listcontent_open();
+            if ($incurrent) $R->strong_open();
+
+            if (((int)$node->getProperty('permission', 0)) < AUTH_READ) {
+                $R->cdata($node->getTitle());
+            } else {
+                $R->internallink($node->getId(), $node->getTitle(), null, false, 'navigation');
+            }
+
+            if ($incurrent) $R->strong_close();
+            $R->listcontent_close();
+            if ($node->hasChildren()) {
+                $this->renderTree($R, $node, $level + 1);
+            }
+            $R->listitem_close();
+        }
+        $R->listu_close();
     }
 
     /**
-     * Custom search callback
+     * Check if the given parent ID is a parent of the child ID
      *
-     * @param $data
-     * @param $base
-     * @param $file
-     * @param $type
-     * @param $lvl
-     * @param array $opts - currentID is the currently shown page
+     * @param string $child
+     * @param string $parent
      * @return bool
      */
-    public function cbSearch(&$data, $base, $file, $type, $lvl, $opts)
+    protected function isParent(string $child, string $parent)
     {
-        global $conf;
-        $return = true;
-
-        $id = pathID($file);
-
-        if (
-            $type == 'd' &&
-            (
-                !preg_match('#^' . $id . '(:|$)#', $opts['currentID']) &&
-                !preg_match('#^' . $id . '(:|$)#', getNS($opts['currentID']))
-            )
-        ) {
-            //add but don't recurse
-            $return = false;
-        } elseif ($type == 'f' && (!empty($opts['nofiles']) || substr($file, -4) != '.txt')) {
-            //don't add
-            return false;
-        }
-
-        // for sneaky index, check access to the namespace's start page
-        if ($type == 'd' && $conf['sneaky_index']) {
-            $sp = (new PageResolver(''))->resolveId($id . ':');
-            if (auth_quickaclcheck($sp) < AUTH_READ) {
-                return false;
-            }
-        }
-
-        if ($type == 'd') {
-            // link directories to their start pages
-            $original = $id;
-            $id = "$id:";
-            $id = (new PageResolver(''))->resolveId($id);
-            $this->startpages[$id] = 1;
-
-            // if the resolve id is in the same namespace as the original it's a start page named like the dir
-            if (getNS($original) === getNS($id)) {
-                $useNS = $original;
-            }
-        } elseif (!empty($this->startpages[$id])) {
-            // skip already shown start pages
-            return false;
-        }
-
-        //check hidden
-        if (isHiddenPage($id)) {
-            return false;
-        }
-
-        //check ACL
-        if ($type == 'f' && auth_quickaclcheck($id) < AUTH_READ) {
-            return false;
-        }
-
-        $data[$id] = [
-            'id' => $id,
-            'type' => $type,
-            'level' => $lvl,
-            'open' => $return,
-            'title' => $this->getTitle($id, $opts['usetitle']),
-            'ns' => $useNS ?? (string)getNS($id),
-        ];
-
-        return $return;
+        $child = explode(':', $child);
+        $parent = explode(':', $parent);
+        return array_slice($child, 0, count($parent)) === $parent;
     }
 
-    /**
-     * @param string $id
-     * @param bool $useTitle
-     * @return array
-     */
-    protected function getMainStartPage($ns, $useTitle)
-    {
-        $resolver = new PageResolver('');
-        $id = $resolver->resolveId($ns . ':');
-
-        $item = [
-            'id' => $id,
-            'type' => 'd',
-            'level' => 0,
-            'open' => true,
-            'title' => $this->getTitle($id, $useTitle),
-            'ns' => $ns,
-        ];
-        $this->startpages[$id] = 1;
-        return $item;
-    }
 
     /**
      * Get the title for the given page ID
