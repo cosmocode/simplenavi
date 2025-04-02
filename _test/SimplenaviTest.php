@@ -2,8 +2,8 @@
 
 namespace dokuwiki\plugin\simplenavi\test;
 
+use dokuwiki\TreeBuilder\PageTreeBuilder;
 use DokuWikiTest;
-use TestRequest;
 
 /**
  * General tests for the simplenavi plugin
@@ -50,210 +50,111 @@ class SimplenaviTest extends DokuWikiTest
 
         yield [
             'set' => 'by ID, all branches closed',
-            'titlesort' => false,
-            'natsort' => false,
-            'nsfirst' => false,
+            'sort' => 'id',
+            'usetitle' => false,
             'home' => false,
             'current' => 'simplenavi:page',
             'expect' => [
-                'simplenavi:foo',
-                'simplenavi:namespace1:start',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:namespace2',
-                'simplenavi:namespace21:start',
-            ]
-        ];
-
-        yield [
-            'set' => 'by ID, Natural Sort, all branches closed',
-            'titlesort' => false,
-            'natsort' => true,
-            'nsfirst' => false,
-            'home' => false,
-            'current' => 'simplenavi:page',
-            'expect' => [
-                'simplenavi:foo',
-                'simplenavi:namespace1:start',
-                'simplenavi:namespace2',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace21:start',
-                'simplenavi:namespace123:namespace123',
+                '+simplenavi:foo',
+                '+simplenavi:namespace1:start',
+                '+simplenavi:namespace12:start',
+                '+simplenavi:namespace123:namespace123',
+                '+simplenavi:namespace2',
+                '+simplenavi:namespace21:start',
             ]
         ];
 
         yield [
             'set' => 'by ID, branch open',
-            'titlesort' => false,
-            'natsort' => false,
-            'nsfirst' => false,
+            'sort' => 'id',
+            'usetitle' => false,
             'home' => false,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
-                'simplenavi:foo',
-                'simplenavi:namespace1:start',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:namespace123:deep:start',
-                'simplenavi:namespace123:deep:foo',
-                'simplenavi:namespace123:foo',
-                'simplenavi:namespace2',
-                'simplenavi:namespace21:start',
+                '+simplenavi:foo',
+                '+simplenavi:namespace1:start',
+                '+simplenavi:namespace12:start',
+                '+simplenavi:namespace123:namespace123',
+                '++simplenavi:namespace123:deep:start',
+                '+++simplenavi:namespace123:deep:foo',
+                '++simplenavi:namespace123:foo',
+                '+simplenavi:namespace2',
+                '+simplenavi:namespace21:start',
             ]
         ];
 
-        yield [
-            'set' => 'by ID, Natural Sort, branch open',
-            'titlesort' => false,
-            'natsort' => true,
-            'nsfirst' => false,
-            'home' => false,
-            'current' => 'simplenavi:namespace123:deep:foo',
-            'expect' => [
-                'simplenavi:foo',
-                'simplenavi:namespace1:start',
-                'simplenavi:namespace2',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace21:start',
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:namespace123:deep:start',
-                'simplenavi:namespace123:deep:foo',
-                'simplenavi:namespace123:foo',
-            ]
-        ];
-
-        yield [
-            'set' => 'by ID, Natural Sort, NS first, branch open',
-            'titlesort' => false,
-            'natsort' => true,
-            'nsfirst' => true,
-            'home' => false,
-            'current' => 'simplenavi:namespace123:deep:foo',
-            'expect' => [
-                'simplenavi:namespace1:start',
-                'simplenavi:namespace2',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace21:start',
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:namespace123:deep:start',
-                'simplenavi:namespace123:deep:foo',
-                'simplenavi:namespace123:foo',
-                'simplenavi:foo',
-            ]
-        ];
-
-        yield [
-            'set' => 'by Title, all branches closed',
-            'titlesort' => true,
-            'natsort' => false,
-            'nsfirst' => false,
-            'home' => false,
-            'current' => 'simplenavi:page',
-            'expect' => [
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:foo',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace2',
-                'simplenavi:namespace21:start',
-                'simplenavi:namespace1:start',
-            ]
-        ];
 
         yield [
             'set' => 'by Title, Natural Search, all branches closed',
-            'titlesort' => true,
-            'natsort' => true,
-            'nsfirst' => false,
+            'sort' => 'title',
+            'usetitle' => true,
             'home' => false,
             'current' => 'simplenavi:page',
             'expect' => [
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:foo',
-                'simplenavi:namespace2',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace21:start',
-                'simplenavi:namespace1:start',
-            ]
-        ];
-
-        yield [
-            'set' => 'by Title, branch open',
-            'titlesort' => true,
-            'natsort' => false,
-            'nsfirst' => false,
-            'home' => false,
-            'current' => 'simplenavi:namespace123:deep:foo',
-            'expect' => [
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:namespace123:deep:start',
-                'simplenavi:namespace123:deep:foo',
-                'simplenavi:namespace123:foo',
-                'simplenavi:foo',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace2',
-                'simplenavi:namespace21:start',
-                'simplenavi:namespace1:start',
+                '+simplenavi:namespace123:namespace123',
+                '+simplenavi:foo',
+                '+simplenavi:namespace2',
+                '+simplenavi:namespace12:start',
+                '+simplenavi:namespace21:start',
+                '+simplenavi:namespace1:start',
             ]
         ];
 
         yield [
             'set' => 'by Title, Natural Sort, branch open',
-            'titlesort' => true,
-            'natsort' => true,
-            'nsfirst' => false,
+            'sort' => 'title',
+            'usetitle' => true,
             'home' => false,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:namespace123:deep:start',
-                'simplenavi:namespace123:deep:foo',
-                'simplenavi:namespace123:foo',
-                'simplenavi:foo',
-                'simplenavi:namespace2',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace21:start',
-                'simplenavi:namespace1:start',
+                '+simplenavi:namespace123:namespace123',
+                '++simplenavi:namespace123:deep:start',
+                '+++simplenavi:namespace123:deep:foo',
+                '++simplenavi:namespace123:foo',
+                '+simplenavi:foo',
+                '+simplenavi:namespace2',
+                '+simplenavi:namespace12:start',
+                '+simplenavi:namespace21:start',
+                '+simplenavi:namespace1:start',
             ]
         ];
 
         yield [
             'set' => 'by Title, Natural Sort, NS first, branch open',
-            'titlesort' => true,
-            'natsort' => true,
-            'nsfirst' => true,
+            'sort' => 'ns_title',
+            'usetitle' => true,
             'home' => false,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:namespace123:deep:start',
-                'simplenavi:namespace123:deep:foo',
-                'simplenavi:namespace123:foo',
-                'simplenavi:namespace2',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace21:start',
-                'simplenavi:namespace1:start',
-                'simplenavi:foo',
+                '+simplenavi:namespace123:namespace123',
+                '++simplenavi:namespace123:deep:start',
+                '+++simplenavi:namespace123:deep:foo',
+                '++simplenavi:namespace123:foo',
+                '+simplenavi:namespace2',
+                '+simplenavi:namespace12:start',
+                '+simplenavi:namespace21:start',
+                '+simplenavi:namespace1:start',
+                '+simplenavi:foo',
             ]
         ];
 
         yield [
             'set' => 'by ID, branch open with home level',
-            'titlesort' => false,
-            'natsort' => false,
-            'nsfirst' => false,
+            'sort' => 'id',
+            'usetitle' => false,
             'home' => true,
             'current' => 'simplenavi:namespace123:deep:foo',
             'expect' => [
-                'simplenavi:simplenavi',
-                'simplenavi:foo',
-                'simplenavi:namespace1:start',
-                'simplenavi:namespace12:start',
-                'simplenavi:namespace123:namespace123',
-                'simplenavi:namespace123:deep:start',
-                'simplenavi:namespace123:deep:foo',
-                'simplenavi:namespace123:foo',
-                'simplenavi:namespace2',
-                'simplenavi:namespace21:start',
+                '+simplenavi:simplenavi',
+                '++simplenavi:foo',
+                '++simplenavi:namespace1:start',
+                '++simplenavi:namespace12:start',
+                '++simplenavi:namespace123:namespace123',
+                '+++simplenavi:namespace123:deep:start',
+                '++++simplenavi:namespace123:deep:foo',
+                '+++simplenavi:namespace123:foo',
+                '++simplenavi:namespace2',
+                '++simplenavi:namespace21:start',
             ]
         ];
     }
@@ -261,11 +162,17 @@ class SimplenaviTest extends DokuWikiTest
     /**
      * @dataProvider dataProvider
      */
-    public function testSorting($set, $titlesort, $natsort, $nsfirst, $home, $current, $expect)
+    public function testSorting($set, $sort, $usetitle, $home, $current, $expect)
     {
         $simpleNavi = new \syntax_plugin_simplenavi();
-        $items = $simpleNavi->getSortedItems('simplenavi', $current, $titlesort, $natsort, $nsfirst, $home);
-        $this->assertSame($expect, array_column($items, 'id'), $set);
+
+        $simpleNavi->initState('simplenavi', $current, $usetitle, $sort, $home);
+
+        /** @var PageTreeBuilder $tree */
+        $tree = $this->callInaccessibleMethod($simpleNavi, 'getTree', []);
+
+
+        $this->assertSame(join("\n", $expect), (string) $tree, $set);
     }
 
 }

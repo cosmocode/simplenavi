@@ -16,7 +16,11 @@ use dokuwiki\TreeBuilder\TreeSort;
  */
 class syntax_plugin_simplenavi extends SyntaxPlugin
 {
-    private $startpages = [];
+    protected string $ns;
+    protected string $currentID;
+    protected bool $usetitle;
+    protected string $sort;
+    protected bool $home;
 
     /** @inheritdoc */
     public function getType()
@@ -52,9 +56,9 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
     public function render($format, Doku_Renderer $renderer, $data)
     {
         if ($format != 'xhtml') return false;
+        $renderer->nocache();
 
         global $INFO;
-        $renderer->nocache();
 
         // first data is namespace, rest is options
         $ns = array_shift($data);
@@ -65,6 +69,14 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
             $ns = cleanID($ns);
         }
 
+        $this->initState(
+            $ns,
+            $INFO['id'],
+            (bool)$this->getConf('usetitle'),
+            $this->getConf('sort'),
+            in_array('home', $data)
+        );
+
         $tree = $this->getTree($ns);
         $this->renderTree($renderer, $tree->getTop());
 
@@ -72,20 +84,58 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
     }
 
     /**
-     * Create the tree
+     * Initialize the configuration state of the plugin
+     *
+     * Also used in testing
      *
      * @param string $ns
+     * @param string $currentID
+     * @param bool $usetitle
+     */
+    public function initState(
+        string $ns,
+        string $currentID,
+        bool   $usetitle,
+        string $sort,
+        bool   $home
+    )
+    {
+        $this->ns = $ns;
+        $this->currentID = $currentID;
+        $this->usetitle = $usetitle;
+        $this->sort = $sort;
+        $this->home = $home;
+    }
+
+    /**
+     * Create the tree
+     *
      * @return PageTreeBuilder
      */
-    protected function getTree(string $ns): PageTreeBuilder
+    protected function getTree(): PageTreeBuilder
     {
-        $tree = new PageTreeBuilder($ns);
+        $tree = new PageTreeBuilder($this->ns);
         $tree->addFlag(PageTreeBuilder::FLAG_NS_AS_STARTPAGE);
-        $tree->addFlag(PageTreeBuilder::FLAG_SELF_TOP);
+        if ($this->home) $tree->addFlag(PageTreeBuilder::FLAG_SELF_TOP);
         $tree->setRecursionDecision(\Closure::fromCallable([$this, 'treeRecursionDecision']));
         $tree->setNodeProcessor(\Closure::fromCallable([$this, 'treeNodeProcessor']));
         $tree->generate();
-        $tree->sort(TreeSort::SORT_BY_NS_FIRST_THEN_TITLE);
+
+        switch ($this->sort) {
+            case 'id':
+                $tree->sort(TreeSort::SORT_BY_ID);
+                break;
+            case 'title':
+                $tree->sort(TreeSort::SORT_BY_TITLE);
+                break;
+            case 'ns_id':
+                $tree->sort(TreeSort::SORT_BY_NS_FIRST_THEN_ID);
+                break;
+            default:
+                $tree->sort(TreeSort::SORT_BY_NS_FIRST_THEN_TITLE);
+                break;
+        }
+
         return $tree;
     }
 
@@ -99,15 +149,13 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
      */
     protected function treeRecursionDecision(AbstractNode $node, int $depth): bool
     {
-        global $INFO;
-
         if ($node instanceof WikiStartpage) {
             $id = $node->getNs(); // use the namespace for startpages
         } else {
             $id = $node->getId();
         }
 
-        $is_current = $this->isParent($INFO['id'], $id);
+        $is_current = $this->isParent($this->currentID, $id);
         $node->setProperty('is_current', $is_current);
 
         // always recurse into the current page path
@@ -126,11 +174,9 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
      */
     protected function treeNodeProcessor(AbstractNode $node): ?AbstractNode
     {
-        $usetitle = $this->getConf('usetitle');
-
         $perm = auth_quickaclcheck($node->getId());
         $node->setProperty('permission', $perm);
-        $node->setTitle($this->getTitle($node->getId(), $usetitle));
+        $node->setTitle($this->getTitle($node->getId()));
 
 
         if ($node->hasChildren()) {
@@ -202,14 +248,13 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
      * Get the title for the given page ID
      *
      * @param string $id
-     * @param bool $usetitle - use the first heading as title
      * @return string
      */
-    protected function getTitle($id, $usetitle)
+    protected function getTitle($id)
     {
         global $conf;
 
-        if ($usetitle) {
+        if ($this->usetitle) {
             $p = p_get_first_heading($id);
             if (!empty($p)) return $p;
         }
