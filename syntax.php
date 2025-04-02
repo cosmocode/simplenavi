@@ -21,6 +21,7 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
     protected bool $usetitle;
     protected string $sort;
     protected bool $home;
+    protected int $peek=0;
 
     /** @inheritdoc */
     public function getType()
@@ -74,10 +75,11 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
             $INFO['id'],
             (bool)$this->getConf('usetitle'),
             $this->getConf('sort'),
-            in_array('home', $data)
+            in_array('home', $data),
+            $this->getConf('peek', 0),
         );
 
-        $tree = $this->getTree($ns);
+        $tree = $this->getTree();
         $this->renderTree($renderer, $tree->getTop());
 
         return true;
@@ -97,7 +99,8 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
         string $currentID,
         bool   $usetitle,
         string $sort,
-        bool   $home
+        bool   $home,
+        int $peek = 0
     )
     {
         $this->ns = $ns;
@@ -105,6 +108,7 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
         $this->usetitle = $usetitle;
         $this->sort = $sort;
         $this->home = $home;
+        $this->peek = $peek;
     }
 
     /**
@@ -161,7 +165,10 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
         // always recurse into the current page path
         if ($is_current) return true;
 
-        // FIXME for deep peek, we want to recurse until level is reached
+        // should we peek deeper to see if there's something readable?
+        if($depth < $this->peek && auth_quickaclcheck($node->getId()) < AUTH_READ ) {
+            return true;
+        }
 
         return false;
     }

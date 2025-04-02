@@ -11,3 +11,4 @@ $meta['sort'] = array('multichoice', '_choices' => array(
     'ns_id',
     'ns_title',
 ));
+$meta['peek'] = array('numeric', '_min' => 0);
