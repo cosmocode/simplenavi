@@ -245,6 +245,11 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
      */
     protected function isParent(string $child, string $parent)
     {
+        // Empty parent is considered a parent of all pages
+        if ($parent === '') {
+            return true;
+        }
+        
         $child = explode(':', $child);
         $parent = explode(':', $parent);
         return array_slice($child, 0, count($parent)) === $parent;
