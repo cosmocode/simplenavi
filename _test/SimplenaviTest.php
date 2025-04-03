@@ -176,24 +176,35 @@ class SimplenaviTest extends DokuWikiTest
     }
 
     /**
-     * Test the isParent method
+     * Data provider for isParent test
      */
-    public function testIsParent(): void
+    public function isParentDataProvider(): array
+    {
+        return [
+            // Test cases where parent is a parent of child
+            'parent of deep child' => [true, 'namespace1:namespace2:page', 'namespace1'],
+            'direct parent' => [true, 'namespace1:namespace2:page', 'namespace1:namespace2'],
+            'parent of page' => [true, 'namespace1:page', 'namespace1'],
+            
+            // Test cases where parent is not a parent of child
+            'different namespace' => [false, 'namespace1:page', 'namespace2'],
+            'sibling namespace' => [false, 'namespace1:namespace2:page', 'namespace1:namespace3'],
+            
+            // Test edge cases
+            'empty parent' => [true, 'page', ''], // Empty parent is parent of all
+            'self as parent' => [true, 'page', 'page'], // Page is parent of itself
+        ];
+    }
+
+    /**
+     * Test the isParent method
+     * @dataProvider isParentDataProvider
+     */
+    public function testIsParent(bool $expected, string $child, string $parent): void
     {
         $simpleNavi = new \syntax_plugin_simplenavi();
-        
-        // Test cases where parent is a parent of child
-        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:namespace2:page', 'namespace1']));
-        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:namespace2:page', 'namespace1:namespace2']));
-        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:page', 'namespace1']));
-        
-        // Test cases where parent is not a parent of child
-        $this->assertFalse($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:page', 'namespace2']));
-        $this->assertFalse($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:namespace2:page', 'namespace1:namespace3']));
-        
-        // Test edge cases
-        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['page', ''])); // Empty parent is parent of all
-        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['page', 'page'])); // Page is parent of itself
+        $result = $this->callInaccessibleMethod($simpleNavi, 'isParent', [$child, $parent]);
+        $this->assertSame($expected, $result);
     }
 
 }
