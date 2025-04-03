@@ -175,6 +175,27 @@ class SimplenaviTest extends DokuWikiTest
         $this->assertSame(join("\n", $expect), (string) $tree, $set);
     }
 
+    /**
+     * Test the isParent method
+     */
+    public function testIsParent(): void
+    {
+        $simpleNavi = new \syntax_plugin_simplenavi();
+        
+        // Test cases where parent is a parent of child
+        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:namespace2:page', 'namespace1']));
+        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:namespace2:page', 'namespace1:namespace2']));
+        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:page', 'namespace1']));
+        
+        // Test cases where parent is not a parent of child
+        $this->assertFalse($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:page', 'namespace2']));
+        $this->assertFalse($this->callInaccessibleMethod($simpleNavi, 'isParent', ['namespace1:namespace2:page', 'namespace1:namespace3']));
+        
+        // Test edge cases
+        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['page', ''])); // Empty parent is parent of all
+        $this->assertTrue($this->callInaccessibleMethod($simpleNavi, 'isParent', ['page', 'page'])); // Page is parent of itself
+    }
+
 }
 
 
