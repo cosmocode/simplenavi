@@ -21,7 +21,8 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
     protected bool $usetitle;
     protected string $sort;
     protected bool $home;
-    protected int $peek=0;
+    protected int $peek = 0;
+    protected bool $filter = false;
 
     /** @inheritdoc */
     public function getType()
@@ -77,10 +78,19 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
             $this->getConf('sort'),
             in_array('home', $data),
             $this->getConf('peek', 0),
+            in_array('filter', $data)
         );
 
         $tree = $this->getTree();
+
+        $class = 'plugin__simplenavi';
+        if ($this->filter) {
+            $class .= ' plugin__simplenavi_filter';
+        }
+
+        $renderer->doc .= '<div class="' . $class . '">';
         $this->renderTree($renderer, $tree->getTop());
+        $renderer->doc .= '</div>';
 
         return true;
     }
@@ -89,10 +99,6 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
      * Initialize the configuration state of the plugin
      *
      * Also used in testing
-     *
-     * @param string $ns
-     * @param string $currentID
-     * @param bool $usetitle
      */
     public function initState(
         string $ns,
@@ -100,7 +106,8 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
         bool   $usetitle,
         string $sort,
         bool   $home,
-        int $peek = 0
+        int    $peek = 0,
+        bool   $filter = false
     )
     {
         $this->ns = $ns;
@@ -109,6 +116,7 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
         $this->sort = $sort;
         $this->home = $home;
         $this->peek = $peek;
+        $this->filter = $filter;
     }
 
     /**
@@ -166,7 +174,7 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
         if ($is_current) return true;
 
         // should we peek deeper to see if there's something readable?
-        if($depth < $this->peek && auth_quickaclcheck($node->getId()) < AUTH_READ ) {
+        if ($depth < $this->peek && auth_quickaclcheck($node->getId()) < AUTH_READ) {
             return true;
         }
 
@@ -202,7 +210,7 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
 
 
     /**
-     * Example on how to render a TreeBuilder tree
+     * Render the tree
      *
      * @param Doku_Renderer $R The current renderer
      * @param AbstractNode $top The top node of the tree (use getTop() to get it)
@@ -249,7 +257,7 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
         if ($parent === '') {
             return true;
         }
-        
+
         $child = explode(':', $child);
         $parent = explode(':', $parent);
         return array_slice($child, 0, count($parent)) === $parent;
