@@ -4,6 +4,11 @@
  * Options for the simplenavi plugin
  */
 
-$meta['natsort'] = array('onoff');
-$meta['nsfirst'] = array('onoff');
 $meta['usetitle'] = array('onoff');
+$meta['sort'] = array('multichoice', '_choices' => array(
+    'id',
+    'title',
+    'ns_id',
+    'ns_title',
+));
+$meta['peek'] = array('numeric', '_min' => 0);

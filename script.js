@@ -8,12 +8,13 @@ jQuery(function () {
         .attr('placeholder', LANG.plugins.simplenavi.filter)
         .val(window.sessionStorage.getItem('simplenavi-filter'));
 
-    $box.on('input', function () {
-        window.sessionStorage.setItem('simplenavi-filter', $box.val());
-        const lookup = new RegExp($box.val(), 'i');
+    $box.on('input', function (e) {
+        const value = e.target.value;
+        window.sessionStorage.setItem('simplenavi-filter', value);
+        const lookup = new RegExp(value, 'i');
         $plugin.find('li.hidden').removeClass('hidden');
-        $plugin.find('> ul > li > .li > a').filter(function () {
-            return !this.text.match(lookup);
+        $plugin.find('> ul > li > .li').filter(function () {
+            return !this.textContent.match(lookup);
         }).parents('li').addClass('hidden');
     });
 
