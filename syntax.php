@@ -205,6 +205,9 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
             return null;
         }
 
+        // don't show hidden pages
+        if(isHiddenPage($node->getId())) return null;
+
         return $node;
     }
 

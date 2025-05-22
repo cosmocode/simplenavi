@@ -20,8 +20,12 @@ class SimplenaviTest extends DokuWikiTest
 
     public function setUp(): void
     {
+        global $conf;
+
         parent::setUp();
         saveWikiText('sidebar', '{{simplenavi>}}', 'create test sidebar');
+
+        $conf['hidepages'] = ':hidden(:|$)';
 
         $pages = [
             ['foo', 'Foo Page'],
@@ -33,6 +37,7 @@ class SimplenaviTest extends DokuWikiTest
             ['namespace12:start', 'Namespace 12 Start'],
             ['namespace123:namespace123', 'AAA Namespace 123 Start'],
             ['namespace123:foo', 'Namespace 123 Foo'],
+            ['namespace123:hidden', 'A hidden page'],
             ['namespace123:deep:start', 'Namespace 123 Deep Start'],
             ['namespace123:deep:foo', 'Namespace 123 Deep Foo'],
             ['namespace21:foo', 'Namespace 21 Foo'],
@@ -185,11 +190,11 @@ class SimplenaviTest extends DokuWikiTest
             'parent of deep child' => [true, 'namespace1:namespace2:page', 'namespace1'],
             'direct parent' => [true, 'namespace1:namespace2:page', 'namespace1:namespace2'],
             'parent of page' => [true, 'namespace1:page', 'namespace1'],
-            
+
             // Test cases where parent is not a parent of child
             'different namespace' => [false, 'namespace1:page', 'namespace2'],
             'sibling namespace' => [false, 'namespace1:namespace2:page', 'namespace1:namespace3'],
-            
+
             // Test edge cases
             'empty parent' => [true, 'page', ''], // Empty parent is parent of all
             'self as parent' => [true, 'page', 'page'], // Page is parent of itself
