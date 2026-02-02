@@ -222,12 +222,18 @@ class syntax_plugin_simplenavi extends SyntaxPlugin
      */
     protected function renderTree(Doku_Renderer $R, AbstractNode $top, $level = 1)
     {
-        $R->listu_open();
+        $R->listu_open('idx');
         foreach ($top->getChildren() as $node) {
             $isfolder = $node instanceof WikiNamespace;
             $incurrent = $node->getProperty('is_current', false);
 
-            $R->listitem_open(1, $isfolder);
+            // Use open/closed classes for namespaces for backward compatibility
+            if ($isfolder && $R->getFormat() == 'xhtml') {
+                $class = $node->hasChildren() ? 'node open' : 'node closed';
+                $R->doc .= '<li class="level' . $level . ' ' . $class . '">';
+            } else {
+                $R->listitem_open($level, $isfolder);
+            }
             $R->listcontent_open();
             if ($incurrent) $R->strong_open();
 
